@@ -1,0 +1,43 @@
+*markup.txt* Toggle markdown checkboxes
+
+Author:  chris davison <https://chrisdavison.github.io>
+License: Same terms as Vim itself (see |license|)
+
+INTRODUCTION                                    *markup*
+
+
+A simple utility to toggle, Untick, or remove checkboxes from markdown documents.
+
+
+MAPS                                            *markup-maps*
+
+                                                *markup-<leader>x*
+                                                *markup-v-<leader>x*
+{visual}<leader>x                   
+<leader>x
+    Toggle checkbox on current line, or visual selection
+
+
+                                                *markup-<leader>X*
+                                                *markup-v-<leader>X*
+{visual}<leader>X                   
+<leader>X           
+    Remove checkbox on current line, or visual selection
+
+
+COMMANDS                                          *markup-commands*
+
+:[range]Tick                                      *:Tick*
+
+    Toggle between empty, and ticked checkbox (on line, range, or visual). 
+    If no checkbox exists, will add an empty checkbox.
+
+:[range]Untick                                    *:Untick*
+    
+    Remove checkboxes from the current line, range, or visual selection.
+
+:[range]RMCheck                                          *:RMCheck*          
+
+    Remove checkboxes from the selected region, OR the entire document (if no 
+    region is selected)
+
