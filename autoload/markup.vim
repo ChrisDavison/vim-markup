@@ -77,7 +77,7 @@ function! markup#find_next_link() abort "{{{1
 endfunction 
 
 function! markup#goto_file(split) abort "{{{1
-    let [next_link_pos, next_link_url]=markdown#find_next_link()
+    let [next_link_pos, next_link_url]=markup#find_next_link()
     call cursor(l:next_link_pos)
     let command = "edit "
     if a:split > 0
@@ -159,7 +159,7 @@ function! markup#move_visual_selection_to_file(start, end) abort "{{{1
 endfunction 
 
 function! markup#previous_heading_linum(same) "{{{1
-    let cur_level=markdown#current_heading_level()
+    let cur_level=markup#current_heading_level()
     let regexp=s:header_regexp
     let regexp_same="^" . repeat("#", cur_level) . " "
     let heading_line=search(l:regexp, "nb")
@@ -182,7 +182,7 @@ function! markup#next_heading_linum(same) "{{{1
     if markup#on_heading()
         let cur_level=split(getline('.'), " ")[0]
     else
-        let prev_heading_line=markdown#previous_heading_linum(0)
+        let prev_heading_line=markup#previous_heading_linum(0)
         if getline(l:prev_heading_line) =~ "^#\+ "
             let cur_level=split(getline(l:prev_heading_line), " ")[0]
         else
@@ -255,7 +255,7 @@ function! markup#goto_next_heading(same) "{{{1
 endfunction 
 
 function! markup#choose_header(location) "{{{1
-    let headers=markdown#file_headers(a:location)
+    let headers=markup#file_headers(a:location)
     let choice=inputlist(map(headers, {idx, val -> idx . ". " . val}))
     let chosen_title=headers[l:choice]
     return l:chosen_title
@@ -298,7 +298,7 @@ endfunction
 function! markup#previous_sibling_or_parent() "{{{1
     " Go backwards to a heading of the same level
     " or UP a level, if no headings of the same level
-    let curlevel=markdown#current_heading_level()
+    let curlevel=markup#current_heading_level()
     let rx_same="^" . repeat("#", curlevel) . " "
     let line_previous=search(rx_same, "nb")
     if curlevel > 1
@@ -317,7 +317,7 @@ endfunction
 function! markup#next_sibling_or_section() "{{{1
     " Go forwards to a heading of the same level
     " or to the next heading of a higher level
-    let curlevel=markdown#current_heading_level()
+    let curlevel=markup#current_heading_level()
     let rx_same="^" . repeat("#", curlevel) . " "
     let line_next=search(rx_same, "nW")
     if line_next == 0
@@ -346,11 +346,11 @@ function! markup#fold_all_but_this_h1() "{{{1
 endfunction 
 
 function! markup#fold_all_but_current_heading() "{{{1
-    if !markdown#on_heading()
+    if !markup#on_heading()
         call search('^' . repeat('#', markup#current_heading_level()), 'bc')
     end
     norm zM
-    let c=markdown#current_heading_level()
+    let c=markup#current_heading_level()
     while c > 1
         let c -= 1
         norm zo
