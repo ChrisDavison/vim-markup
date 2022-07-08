@@ -24,7 +24,7 @@ function! markup#textobj#section_around() "{{{
     " AROUND a markdown section
     " section is defined as the nearest parent header
     let parent=markup#previous_sibling_or_parent()
-    if on_heading()
+    if markup#on_heading()
         let l:parent=line('.')
     end
     let after=markup#next_sibling_or_section()

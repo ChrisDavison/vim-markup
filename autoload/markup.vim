@@ -4,6 +4,11 @@ function! s:titlecase(str) abort "{{{
     return join(l:titled, ' ')
 endfunction "}}}
 
+function! markup#on_heading() "{{{1
+    return getline(".") =~ '^#\+ '
+endfunction 
+
+
 let s:header_regexp="^#\\+ "
 if !exists("g:markdown_filename_as_header_suppress")
   let g:markdown_filename_as_header_suppress = 0
@@ -200,9 +205,6 @@ function! markup#next_heading_linum(same) "{{{1
     return max([l:curline, l:heading_line])
 endfunction 
 
-function! markup#on_heading() "{{{1
-    return getline(".") =~ '^#\+ '
-endfunction 
 
 function! markup#new_section(levels_to_add) abort "{{{1
     if markup#on_heading()
