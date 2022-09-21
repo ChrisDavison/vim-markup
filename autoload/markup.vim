@@ -4,7 +4,6 @@ function! s:titlecase(str) abort "{{{
     return join(l:titled, ' ')
 endfunction "}}}
 
-" Are we on a markdown ATX heading?
 function! markup#on_heading() "{{{1
     return getline(".") =~ '^#\+ '
 endfunction
@@ -207,8 +206,15 @@ function! markup#next_heading_linum(same) "{{{1
     return max([l:curline, l:heading_line])
 endfunction
 
+function! markup#new_section() abort "{{{1
+    call <sid>add_new_section(0)
+endfunction
 
-function! markup#new_section(levels_to_add) abort "{{{1
+function! markup#new_subsection() abort "{{{1
+    call <sid>add_new_section(1)
+endfunction
+
+function! s:add_new_section(is_subsection) abort "{{{1
     if markup#on_heading()
         let headerdepth=strlen(split(getline("."), " ")[0])
     else
@@ -412,6 +418,106 @@ function! markup#replace_region_with_bolditalic() "{{{
     let msg="***" . getreg('*') . "***"
     echom l:msg
     exec "norm c" . l:msg
+endfunction "}}}
+
+function! markup#delete_markdown_list_entry() "{{{
+    let start_of_list=search('^\(-\|\d\+\.\)', 'bc')
+    let end_of_list=search('\(^-\|^\d\+\.\|^\s*$\|\%$\)', '')
+    " Fix for if the line ends ON the last line
+    " By default, we `-1` so we only remove the lines in question
+    " but if line ends at EOF, need to set last line to EOF line
+    if end_of_list != line('$')
+        let end_of_list -= 1
+    endif
+    exec l:start_of_list . "," l:end_of_list . "d"
+endfunction "}}}
+
+function! markup#delete_markdown_section() "{{{
+    let [ign, p_start, p_end]=markup#textobj#section_around()
+    let l_start=p_start[1]
+    let l_end=p_end[1]
+    exec l_start . "," l_end . "d"
+endfunction "}}}
+
+function! markup#startline_of_markdown_list_item() abort "{{{
+    let pat_list = '^\s*\(-\|\d\+\.\|[a-z]\.\|\*\|+\)\s\+'
+    let pat_hanging_line = '^\s\+[a-zA-Z0-9]'
+    if match(getline('.'), l:pat_list) == 0
+        return line('.')
+    else
+        if match(getline('.'), l:pat_hanging_line) == 0
+            for i in range(line('.'), 1, -1)
+                if match(getline(i), l:pat_list) == 0
+                    return i
+                endif
+                if match(getline(i), '^\s*$') == 0
+                    return 0
+                endif
+            endfor
+        endif
+    endif
+    return 0
+endfunction "}}}
+
+function! markup#insert_at_start_of_markdown_list_item() abort "{{{
+    let start=markup#startline_of_markdown_list_item()
+    if start == 0
+        norm ^
+        startinsert
+    else
+        call cursor(l:start, 1)
+        if match(getline(l:start), '^\s\+') == 0
+            norm W
+        endif
+        norm W
+        startinsert
+    endif
+endfunction "}}}
+
+function! s:update_header_to_level(header, level) abort "{{{
+    if match(a:header, '^#\+ ') != 0
+        return a:header
+    endif
+    let cur=len(substitute(a:header, '^\(#\+\) .*', '\1', ''))
+    let no_hash=substitute(a:header, '^#\+ \(.*\)', '\1', '')
+    let diff=a:level - l:cur
+    let fixed=repeat('#', l:cur + l:diff) . ' ' . l:no_hash
+    return l:fixed
+endfunction "}}}
+
+
+function! markup#paste_with_header_increase() abort "{{{
+    let stuff=split(getreg('*'), "\n")
+    let increased=map(l:stuff, {_, val -> substitute(val, '^#', '##', '')})
+    call append(line('.'), l:increased)
+endfunction "}}}
+
+function! markup#paste_with_header_decrease() abort "{{{
+    let stuff=split(getreg('*'), "\n")
+    let decreased=map(l:stuff, {_, val -> substitute(val, '^#\(#\+\)', '\1', '')})
+    call append(line('.'), l:decreased)
+endfunction "}}}
+
+
+
+function! markup#paste_with_min_level(level) abort "{{{
+    let stuff=split(getreg('*'), "\n")
+    let lines=[]
+    let headers=[]
+    let min_header=min(
+                \ map(
+                \ filter(copy(l:stuff), {_, v -> match(v, '^#\+ ') == 0}),
+                \ {_, val -> len(substitute(val, '^\(#\+\) .*', '\1', ''))}))
+    let leveldiff=l:min_header-a:level
+    for line in l:stuff
+        if match(line, '^#\+ ') == 0
+            let parts=split(line, ' ')
+            let cur=len(parts[0])
+            let line=repeat('#', cur-leveldiff) . ' ' . join(parts[1:len(parts)], ' ')
+        endif
+        call add(lines, line)
+    endfor
+    call append(line('.'), l:lines)
 endfunction "}}}
 
 

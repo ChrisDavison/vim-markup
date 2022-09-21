@@ -33,6 +33,10 @@ command! -range MoveVisualToFile call markup#move_visual_selection_to_file(<line
 command! FilenameAsHeader call markup#filename_as_header()
 command! -bang Backlinks call markup#backlinks(<bang>1)
 
+command! PasteDeeper call markup#paste_with_min_level(markup#current_heading_level() + 1)
+command! PasteShallower call markup#paste_with_min_level(markup#current_heading_level() - 1)
+command! -nargs=1 PasteLevel call markup#paste_with_min_level(<q-args>)
+
 if !exists("g:markup_no_replace_mappings") || !g:markup_no_replace_mappings
   nnoremap <buffer> PB :call markup#replace_cWORD_with_bold()<CR>
   nnoremap <buffer> PI :call markup#replace_cWORD_with_italic()<CR>
