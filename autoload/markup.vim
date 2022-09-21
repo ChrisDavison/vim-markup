@@ -4,9 +4,10 @@ function! s:titlecase(str) abort "{{{
     return join(l:titled, ' ')
 endfunction "}}}
 
+" Are we on a markdown ATX heading?
 function! markup#on_heading() "{{{1
     return getline(".") =~ '^#\+ '
-endfunction 
+endfunction
 
 
 let s:header_regexp="^#\\+ "
@@ -14,11 +15,12 @@ if !exists("g:markdown_filename_as_header_suppress")
   let g:markdown_filename_as_header_suppress = 0
 endif
 
+" Convert filename to a 'readable' H1 header
 function! markup#filename_as_header() abort "{{{1
     let filename=expand('%:t:r')
     let header='# ' . s:titlecase(substitute(l:filename, '-', ' ', 'g'))
     call append(0, l:header)
-endfunction 
+endfunction
 
 function! markup#find_next_reference_link() abort "{{{1
     let link_re='\[\(.*\)\]\[\]'
@@ -36,7 +38,7 @@ function! markup#find_next_reference_link() abort "{{{1
     let urlline=getline(l:posurl[0])
     let url=matchlist(l:urlline, l:url_re, l:posurl[1]-1)[1]
     return [l:pos, l:url]
-endfunction 
+endfunction
 
 function! markup#find_reference_link_from_anchor() abort "{{{1
     let link_re='\[.*\]: \(.*\)'
@@ -46,18 +48,18 @@ function! markup#find_reference_link_from_anchor() abort "{{{1
     endif
     let text=matchlist(getline(l:pos[0]), l:link_re)[1]
     return [l:pos, l:text]
-endfunction 
+endfunction
 
 function! markup#find_next_plain_link() abort "{{{1
     let link_re='\[.*\](\(.*\))'
     let pos=searchpos(l:link_re, "n")
     if pos[:2] == [0, 0]
-        return 
+        return
     endif
     let line=getline(pos[0])
     let url=matchlist(l:line, l:link_re, pos[1]-1)[1]
     return [l:pos, l:url]
-endfunction 
+endfunction
 
 function! s:compare_link_matches(i1, i2) "{{{1
     let [row1, col1] = a:i1[0]
@@ -69,17 +71,17 @@ function! s:compare_link_matches(i1, i2) "{{{1
     else
         return 1
     endif
-endfunction 
+endfunction
 
 function! markup#find_next_link() abort "{{{1
     let nearest_links=filter([
-                \ markup#find_next_reference_link(), 
+                \ markup#find_next_reference_link(),
                 \ markup#find_reference_link_from_anchor(),
                 \ markup#find_next_plain_link()
                 \ ], {_, v -> len(v) > 1})
     call sort(l:nearest_links, function("<sid>compare_link_matches"))
     return l:nearest_links[0]
-endfunction 
+endfunction
 
 function! markup#goto_file(split) abort "{{{1
     let [next_link_pos, next_link_url]=markup#find_next_link()
@@ -114,7 +116,7 @@ function! markup#goto_file(split) abort "{{{1
     " ----
     echom "Couldn't find valid link. Tried: " . l:next_link_url
     return [0, l:next_link_url]
-endfunction 
+endfunction
 
 function! markup#backlinks(use_grep) abort "{{{1
     " Use tail (only filename) so that relative links work
@@ -129,7 +131,7 @@ function! markup#backlinks(use_grep) abort "{{{1
         \ "rg --column --line-number --no-heading --color=always --smart-case -g '!tags' ".l:fname, 1,
         \ fzf#vim#with_preview('right:50%:hidden', '?'), 0)
     end
-endfunction 
+endfunction
 
 function! s:first_line_from_file(filename) "{{{1
     if !filereadable(a:filename)
@@ -137,7 +139,7 @@ function! s:first_line_from_file(filename) "{{{1
     endif
     let title=trim(system('head -n1 ' . a:filename))
     return substitute(l:title, "^\#\\+ \\+", "", "")
-endfunction 
+endfunction
 
 function! markup#move_visual_selection_to_file(start, end) abort "{{{1
     " Need to write to a file relative to PWD
@@ -161,7 +163,7 @@ function! markup#move_visual_selection_to_file(start, end) abort "{{{1
     exec "edit " . l:full_filename
     call markup#promote_till_l1()
     exec "edit #"
-endfunction 
+endfunction
 
 function! markup#previous_heading_linum(same) "{{{1
     let cur_level=markup#current_heading_level()
@@ -173,15 +175,15 @@ function! markup#previous_heading_linum(same) "{{{1
         let l:heading_line=max([l:heading_line, l:heading_line_same])
     endif
     return min([line('.'), l:heading_line])
-endfunction 
+endfunction
 
 function! markup#next_heading_linum(same) "{{{1
     " if on a heading, set cur_level to num #
     " if not on a heading, find PREVIOUS heading, set cur_level to num #
     "
     " if looking for same header_level, go to same number of cur_level UNLESS
-    " a less-nested header exists before it 
-    " e.g go h3 -> h3 if document is [h3] h3 h3, 
+    " a less-nested header exists before it
+    " e.g go h3 -> h3 if document is [h3] h3 h3,
     "    but h3 -> h2 if document is [h3] h2 h3
     let curline=line(".")
     if markup#on_heading()
@@ -203,7 +205,7 @@ function! markup#next_heading_linum(same) "{{{1
     endif
     echom l:cur_level
     return max([l:curline, l:heading_line])
-endfunction 
+endfunction
 
 
 function! markup#new_section(levels_to_add) abort "{{{1
@@ -223,45 +225,45 @@ function! markup#new_section(levels_to_add) abort "{{{1
     call append(l:insert_pos, ["", l:markers, ""])
     call cursor(l:insert_pos + 2, 1)
     startinsert!
-endfunction 
+endfunction
 
 function! markup#header_increase() abort "{{{1
     let save_cursor = getcurpos()
     exec "silent %s/^\\(#\\+\\)/\\1#/"
     call setpos('.', l:save_cursor)
-endfunction 
+endfunction
 
 function! markup#header_decrease() abort "{{{1
     let save_cursor = getcurpos()
     exec "silent %s/^\\(#\\+\\)#/\\1/"
     call setpos('.', l:save_cursor)
-endfunction 
+endfunction
 
 function! markup#jump_to_heading(location) abort "{{{1
     exec "edit " . expand(a:location)
     BLines ^\#\+[ ]
-endfunction 
+endfunction
 
 function! markup#file_headers(location) "{{{1
     let filename=expand(a:location)
     let headers=filter(copy(readfile(l:filename)), {idx, val -> match(val, s:header_regexp) >= 0})
     return l:headers
-endfunction 
+endfunction
 
 function! markup#goto_previous_heading(same) "{{{1
     call setpos('.', [0, markup#previous_heading_linum(a:same), 1, 0])
-endfunction 
+endfunction
 
 function! markup#goto_next_heading(same) "{{{1
     call setpos('.', [0, markup#next_heading_linum(a:same), 1, 0])
-endfunction 
+endfunction
 
 function! markup#choose_header(location) "{{{1
     let headers=markup#file_headers(a:location)
     let choice=inputlist(map(headers, {idx, val -> idx . ". " . val}))
     let chosen_title=headers[l:choice]
     return l:chosen_title
-endfunction 
+endfunction
 
 function! markup#lowest_header_level() "{{{1
     let has_l1=search("^# ", "n") > 0
@@ -279,13 +281,13 @@ function! markup#lowest_header_level() "{{{1
     else
         return 0
     end
-endfunction 
+endfunction
 
 function! markup#promote_till_l1() "{{{1
     let to_replace=repeat("#", markup#lowest_header_level())
     exec "%s/" . l:to_replace . " /# /g"
     write
-endfunction 
+endfunction
 
 function! markup#current_heading_level() "{{{1
     let curlevel = 0
@@ -295,7 +297,7 @@ function! markup#current_heading_level() "{{{1
     endif
     let level=strlen(split(getline(l:heading_line), " ")[0])
     return l:level
-endfunction 
+endfunction
 
 function! markup#previous_sibling_or_parent() "{{{1
     " Go backwards to a heading of the same level
@@ -310,11 +312,11 @@ function! markup#previous_sibling_or_parent() "{{{1
         let line_up=1
     end
     return max([l:line_previous, l:line_up])
-endfunction 
+endfunction
 
 function! markup#goto_previous_sibling_or_parent() "{{{1
     call setpos('.', [0, markup#previous_sibling_or_parent(), 1, 0])
-endfunction 
+endfunction
 
 function! markup#next_sibling_or_section() "{{{1
     " Go forwards to a heading of the same level
@@ -335,17 +337,17 @@ function! markup#next_sibling_or_section() "{{{1
         let line_up=max([line('.'), search("^#\\+ ", "nW"), line('$')])
     end
     return min([l:line_next, l:line_up])
-endfunction 
+endfunction
 
 function! markup#goto_next_sibling_or_section() "{{{1
     call setpos('.', [0, markup#next_sibling_or_section(), 1, 0])
-endfunction 
+endfunction
 
 function! markup#fold_all_but_this_h1() "{{{1
     call search('^# ', 'bc')
     norm zM
     norm zO
-endfunction 
+endfunction
 
 function! markup#fold_all_but_current_heading() "{{{1
     if !markup#on_heading()
@@ -358,7 +360,7 @@ function! markup#fold_all_but_current_heading() "{{{1
         norm zo
     endwhile
     norm zO
-endfunction 
+endfunction
 
 function! markup#list_to_h1(line1, line2) abort "{{{
     let num_spaces=substitute(getline(a:line1 + 1), "\\( \\+\\)-.*", "\\1", "")
@@ -371,3 +373,45 @@ function! markup#list_to_h1(line1, line2) abort "{{{
     exec ":" . a:line1 . "," . a:line2 "delete"
     call append(line('$'), l:lines)
 endfunction "}}}
+
+
+function! markup#replace_cWORD_with_bold() "{{{
+    let msg="**" . expand("<cWORD>") . "**"
+    exec "norm ciW" . l:msg
+endfunction "}}}
+
+function! markup#replace_cWORD_with_italic() "{{{
+    let msg="*" . expand("<cWORD>") . "*"
+    exec "norm ciW" . l:msg
+endfunction "}}}
+
+function! markup#replace_cWORD_with_bolditalic() "{{{
+    let msg="***" . expand("<cWORD>") . "***"
+    exec "norm ciW" . l:msg
+endfunction "}}}
+
+function! markup#replace_region_with_bold() "{{{
+    norm y
+    norm gv
+    let msg="**" . getreg('*') . "**"
+    echom l:msg
+    exec "norm c" . l:msg
+endfunction "}}}
+
+function! markup#replace_region_with_italic() "{{{
+    norm y
+    norm gv
+    let msg="*" . getreg('*') . "*"
+    echom l:msg
+    exec "norm c" . l:msg
+endfunction "}}}
+
+function! markup#replace_region_with_bolditalic() "{{{
+    norm y
+    norm gv
+    let msg="***" . getreg('*') . "***"
+    echom l:msg
+    exec "norm c" . l:msg
+endfunction "}}}
+
+
