@@ -487,13 +487,13 @@ endfunction "}}}
 
 
 function! markup#paste_with_header_increase() abort "{{{
-    let stuff=split(getreg('*'), "\n")
+    let stuff=split(getreg('+'), "\n")
     let increased=map(l:stuff, {_, val -> substitute(val, '^#', '##', '')})
     call append(line('.'), l:increased)
 endfunction "}}}
 
 function! markup#paste_with_header_decrease() abort "{{{
-    let stuff=split(getreg('*'), "\n")
+    let stuff=split(getreg('+'), "\n")
     let decreased=map(l:stuff, {_, val -> substitute(val, '^#\(#\+\)', '\1', '')})
     call append(line('.'), l:decreased)
 endfunction "}}}
@@ -501,7 +501,7 @@ endfunction "}}}
 
 
 function! markup#paste_with_min_level(level) abort "{{{
-    let stuff=split(getreg('*'), "\n")
+    let stuff=split(getreg('+'), "\n")
     let lines=[]
     let headers=[]
     let min_header=min(
