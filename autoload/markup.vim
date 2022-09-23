@@ -227,7 +227,7 @@ function! s:add_new_section(is_subsection) abort "{{{1
         let insert_pos = markup#next_heading_linum(0) - 1  " otherwise, before next heading
     endif
 
-    let markers=repeat("#", l:headerdepth + a:levels_to_add) . " "
+    let markers=repeat("#", l:headerdepth + a:is_subsection) . " "
     call append(l:insert_pos, ["", l:markers, ""])
     call cursor(l:insert_pos + 2, 1)
     startinsert!
