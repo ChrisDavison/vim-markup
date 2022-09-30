@@ -22,7 +22,7 @@ function! markup#filename_as_header() abort "{{{1
 endfunction
 
 function! markup#find_next_reference_link() abort "{{{1
-    let link_re='\[\(.*\)\]\[\]'
+    let link_re='\[\(.*\)\]\(\[\]\)*'
     let pos=searchpos(l:link_re, 'cn')
     if l:pos == [0, 0]
         return
@@ -41,7 +41,7 @@ endfunction
 
 function! markup#find_reference_link_from_anchor() abort "{{{1
     let link_re='\[.*\]: \(.*\)'
-    let pos=searchpos(l:link_re, 'n')
+    let pos=searchpos(l:link_re, 'cn')
     if l:pos == [0, 0]
         return
     endif
@@ -51,7 +51,7 @@ endfunction
 
 function! markup#find_next_plain_link() abort "{{{1
     let link_re='\[.*\](\(.*\))'
-    let pos=searchpos(l:link_re, "n")
+    let pos=searchpos(l:link_re, "cn")
     if pos[:2] == [0, 0]
         return
     endif
