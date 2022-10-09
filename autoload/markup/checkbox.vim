@@ -57,13 +57,25 @@ function! markup#checkbox#toggle() " {{{1
     endif
 endfunction
 
-function! markup#checkbox#rotate() " {{{1
+function! markup#checkbox#rotate(backward) " {{{1
     if !markup#checkbox#has_box()
-        call markup#checkbox#add()
-    elseif markup#checkbox#has_empty_box()
+      if a:backward
         call markup#checkbox#tick()
-    elseif markup#checkbox#has_ticked_box()
+      else
+        call markup#checkbox#add()
+      endif
+    elseif markup#checkbox#has_empty_box()
+      if a:backward
         call markup#checkbox#remove()
+      else
+        call markup#checkbox#tick()
+      endif
+    elseif markup#checkbox#has_ticked_box()
+      if a:backward
+        call markup#checkbox#untick()
+      else
+        call markup#checkbox#remove()
+      endif
     end
 endfunction
 
