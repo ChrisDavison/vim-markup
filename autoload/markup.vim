@@ -1,27 +1,26 @@
+let s:header_regexp="^#\\+ "
+if !exists("g:markdown_filename_as_header_suppress")
+  let g:markdown_filename_as_header_suppress = 0
+endif
+
 function! s:titlecase(str) abort "{{{
     let words=split(a:str, '\W\+')
     let titled=map(l:words, {_, word -> toupper(word[0]) . word[1:]})
     return join(l:titled, ' ')
 endfunction "}}}
 
-function! markup#on_heading() "{{{1
+function! markup#on_heading() "{{{
     return getline(".") =~ '^#\+ '
-endfunction
-
-
-let s:header_regexp="^#\\+ "
-if !exists("g:markdown_filename_as_header_suppress")
-  let g:markdown_filename_as_header_suppress = 0
-endif
+endfunction "}}}
 
 " Convert filename to a 'readable' H1 header
-function! markup#filename_as_header() abort "{{{1
+function! markup#filename_as_header() abort "{{{
     let filename=expand('%:t:r')
     let header='# ' . s:titlecase(substitute(l:filename, '-', ' ', 'g'))
     call append(0, l:header)
-endfunction
+endfunction "}}}
 
-function! markup#find_next_reference_link() abort "{{{1
+function! markup#find_next_reference_link() abort "{{{
     let link_re='\[\(.*\)\]\(\[\]\)*'
     let pos=searchpos(l:link_re, 'cn')
     if l:pos == [0, 0]
@@ -37,9 +36,9 @@ function! markup#find_next_reference_link() abort "{{{1
     let urlline=getline(l:posurl[0])
     let url=matchlist(l:urlline, l:url_re, l:posurl[1]-1)[1]
     return [l:pos, l:url]
-endfunction
+endfunction "}}}
 
-function! markup#find_reference_link_from_anchor() abort "{{{1
+function! markup#find_reference_link_from_anchor() abort "{{{
     let link_re='\[.*\]: \(.*\)'
     let pos=searchpos(l:link_re, 'cn')
     if l:pos == [0, 0]
@@ -47,9 +46,9 @@ function! markup#find_reference_link_from_anchor() abort "{{{1
     endif
     let text=matchlist(getline(l:pos[0]), l:link_re)[1]
     return [l:pos, l:text]
-endfunction
+endfunction "}}}
 
-function! markup#find_next_plain_link() abort "{{{1
+function! markup#find_next_plain_link() abort "{{{
     let link_re='\[.*\](\(.*\))'
     let pos=searchpos(l:link_re, "cn")
     if pos[:2] == [0, 0]
@@ -58,9 +57,9 @@ function! markup#find_next_plain_link() abort "{{{1
     let line=getline(pos[0])
     let url=matchlist(l:line, l:link_re, pos[1]-1)[1]
     return [l:pos, l:url]
-endfunction
+endfunction "}}}
 
-function! s:compare_link_matches(i1, i2) "{{{1
+function! s:compare_link_matches(i1, i2) "{{{
     let [row1, col1] = a:i1[0]
     let [row2, col2] = a:i2[0]
     if row1 == row2
@@ -70,9 +69,9 @@ function! s:compare_link_matches(i1, i2) "{{{1
     else
         return 1
     endif
-endfunction
+endfunction "}}}
 
-function! markup#find_next_link() abort "{{{1
+function! markup#find_next_link() abort "{{{
     let nearest_links=filter([
                 \ markup#find_next_reference_link(),
                 \ markup#find_reference_link_from_anchor(),
@@ -80,44 +79,45 @@ function! markup#find_next_link() abort "{{{1
                 \ ], {_, v -> len(v) > 1})
     call sort(l:nearest_links, function("<sid>compare_link_matches"))
     return l:nearest_links[0]
-endfunction
+endfunction "}}}
 
-function! markup#goto_file(split) abort "{{{1
+function! markup#goto_file(split) abort "{{{
     let [next_link_pos, next_link_url]=markup#find_next_link()
     call cursor(l:next_link_pos)
     let command = "edit "
     if a:split > 0
-        if winwidth(0) > 160
-            " Vertical split if we have 160 columns
-            " (i.e. 2 buffers at 80 columns wide)
-            let command = "vsplit "
-        else
-            let command = "split "
-        endif
+        " Split vertically if window can support more than 2 80-char windows
+        " Otherwise, horizontally
+        let command=(winwidth(0) > 160) ? "vsplit " : "split "
     endif
+    let parts = split(l:next_link_url, '#')
+    let next_link_url=l:parts[0]
+    let next_link_title=substitute(len(l:parts) > 1 ? l:parts[1] : '', '%20', ' ', 'g')
     if filereadable(l:next_link_url)
         execute "silent!" . l:command . l:next_link_url
+        if l:next_link_title
+            call cursor(1,1)
+            call search('^#\+ ' . l:next_link_title)
+        endif
         return [1, l:next_link_url]
     endif
     " ----
+    echom "[markup#goto_file] file url not readable. trying to resolve"
     let next_link_url_res = resolve(expand("%:p:h") . "/" . l:next_link_url)
     if filereadable(l:next_link_url_res)
-        let header=matchlist(l:next_link_url_res, ".*#\(.*\)")
         execute "silent!" . l:command . l:next_link_url_res
-        if len(l:header)
-            let l:tidy=substitute(l:header[1], "%20", " ", "g")
-            if !search("# " . l:tidy)
-                echo "Couldn't find header: " . l:tidy
-            end
-        end
+        if l:next_link_title
+            call cursor(1,1)
+            call search('^#\+ ' . l:next_link_title)
+        endif
         return [1, l:next_link_url_res]
     endif
     " ----
     echom "Couldn't find valid link. Tried: " . l:next_link_url
     return [0, l:next_link_url]
-endfunction
+endfunction "}}}
 
-function! markup#backlinks(use_grep) abort "{{{1
+function! markup#backlinks(use_grep) abort "{{{
     " Use tail (only filename) so that relative links work
     let l:fname=expand("%:t")
     if a:use_grep
@@ -130,17 +130,17 @@ function! markup#backlinks(use_grep) abort "{{{1
         \ "rg --column --line-number --no-heading --color=always --smart-case -g '!tags' ".l:fname, 1,
         \ fzf#vim#with_preview('right:50%:hidden', '?'), 0)
     end
-endfunction
+endfunction "}}}
 
-function! s:first_line_from_file(filename) "{{{1
+function! s:first_line_from_file(filename) "{{{
     if !filereadable(a:filename)
         echom a:filename . " doesn't exist"
     endif
     let title=trim(system('head -n1 ' . a:filename))
     return substitute(l:title, "^\#\\+ \\+", "", "")
-endfunction
+endfunction "}}}
 
-function! markup#move_visual_selection_to_file(start, end) abort "{{{1
+function! markup#move_visual_selection_to_file(start, end) abort "{{{
     " Need to write to a file relative to PWD
     " but copy link relative to file of origin
     " e.g. if origin file is DIRECTORY/parentfile.md
@@ -162,9 +162,9 @@ function! markup#move_visual_selection_to_file(start, end) abort "{{{1
     exec "edit " . l:full_filename
     call markup#promote_till_l1()
     exec "edit #"
-endfunction
+endfunction "}}}
 
-function! markup#previous_heading_linum(same) "{{{1
+function! markup#previous_heading_linum(same) "{{{
     let cur_level=markup#current_heading_level()
     let regexp=s:header_regexp
     let regexp_same="^" . repeat("#", cur_level) . " "
@@ -174,9 +174,9 @@ function! markup#previous_heading_linum(same) "{{{1
         let l:heading_line=max([l:heading_line, l:heading_line_same])
     endif
     return min([line('.'), l:heading_line])
-endfunction
+endfunction "}}}
 
-function! markup#next_heading_linum(same) "{{{1
+function! markup#next_heading_linum(same) "{{{
     " if on a heading, set cur_level to num #
     " if not on a heading, find PREVIOUS heading, set cur_level to num #
     "
@@ -204,17 +204,17 @@ function! markup#next_heading_linum(same) "{{{1
     endif
     echom l:cur_level
     return max([l:curline, l:heading_line])
-endfunction
+endfunction "}}}
 
-function! markup#new_section() abort "{{{1
+function! markup#new_section() abort "{{{
     call <sid>add_new_section(0)
-endfunction
+endfunction "}}}
 
-function! markup#new_subsection() abort "{{{1
+function! markup#new_subsection() abort "{{{
     call <sid>add_new_section(1)
-endfunction
+endfunction "}}}
 
-function! s:add_new_section(is_subsection) abort "{{{1
+function! s:add_new_section(is_subsection) abort "{{{
     if markup#on_heading()
         let headerdepth=strlen(split(getline("."), " ")[0])
     else
@@ -231,47 +231,47 @@ function! s:add_new_section(is_subsection) abort "{{{1
     call append(l:insert_pos, ["", l:markers, ""])
     call cursor(l:insert_pos + 2, 1)
     startinsert!
-endfunction
+endfunction "}}}
 
-function! markup#header_increase() abort "{{{1
+function! markup#header_increase() abort "{{{
     let save_cursor = getcurpos()
     exec "silent %s/^\\(#\\+\\)/\\1#/"
     call setpos('.', l:save_cursor)
-endfunction
+endfunction "}}}
 
-function! markup#header_decrease() abort "{{{1
+function! markup#header_decrease() abort "{{{
     let save_cursor = getcurpos()
     exec "silent %s/^\\(#\\+\\)#/\\1/"
     call setpos('.', l:save_cursor)
-endfunction
+endfunction "}}}
 
-function! markup#jump_to_heading(location) abort "{{{1
+function! markup#jump_to_heading(location) abort "{{{
     exec "edit " . expand(a:location)
     BLines ^\#\+[ ]
-endfunction
+endfunction "}}}
 
-function! markup#file_headers(location) "{{{1
+function! markup#file_headers(location) "{{{
     let filename=expand(a:location)
     let headers=filter(copy(readfile(l:filename)), {idx, val -> match(val, s:header_regexp) >= 0})
     return l:headers
-endfunction
+endfunction "}}}
 
-function! markup#goto_previous_heading(same) "{{{1
+function! markup#goto_previous_heading(same) "{{{
     call setpos('.', [0, markup#previous_heading_linum(a:same), 1, 0])
-endfunction
+endfunction "}}}
 
-function! markup#goto_next_heading(same) "{{{1
+function! markup#goto_next_heading(same) "{{{
     call setpos('.', [0, markup#next_heading_linum(a:same), 1, 0])
-endfunction
+endfunction "}}}
 
-function! markup#choose_header(location) "{{{1
+function! markup#choose_header(location) "{{{
     let headers=markup#file_headers(a:location)
     let choice=inputlist(map(headers, {idx, val -> idx . ". " . val}))
     let chosen_title=headers[l:choice]
     return l:chosen_title
-endfunction
+endfunction "}}}
 
-function! markup#lowest_header_level() "{{{1
+function! markup#lowest_header_level() "{{{
     let has_l1=search("^# ", "n") > 0
     let has_l2=search("^## ", "n") > 0
     let has_l3=search("^### ", "n") > 0
@@ -287,15 +287,15 @@ function! markup#lowest_header_level() "{{{1
     else
         return 0
     end
-endfunction
+endfunction "}}}
 
-function! markup#promote_till_l1() "{{{1
+function! markup#promote_till_l1() "{{{
     let to_replace=repeat("#", markup#lowest_header_level())
     exec "%s/" . l:to_replace . " /# /g"
     write
-endfunction
+endfunction "}}}
 
-function! markup#current_heading_level() "{{{1
+function! markup#current_heading_level() "{{{
     let curlevel = 0
     let heading_line=search("^#\\+ ", "nbc")
     if heading_line == 0
@@ -303,9 +303,9 @@ function! markup#current_heading_level() "{{{1
     endif
     let level=strlen(split(getline(l:heading_line), " ")[0])
     return l:level
-endfunction
+endfunction "}}}
 
-function! markup#previous_sibling_or_parent() "{{{1
+function! markup#previous_sibling_or_parent() "{{{
     " Go backwards to a heading of the same level
     " or UP a level, if no headings of the same level
     let curlevel=markup#current_heading_level()
@@ -318,13 +318,13 @@ function! markup#previous_sibling_or_parent() "{{{1
         let line_up=1
     end
     return max([l:line_previous, l:line_up])
-endfunction
+endfunction "}}}
 
-function! markup#goto_previous_sibling_or_parent() "{{{1
+function! markup#goto_previous_sibling_or_parent() "{{{
     call setpos('.', [0, markup#previous_sibling_or_parent(), 1, 0])
-endfunction
+endfunction "}}}
 
-function! markup#next_sibling_or_section() "{{{1
+function! markup#next_sibling_or_section() "{{{
     " Go forwards to a heading of the same level
     " or to the next heading of a higher level
     let curlevel=markup#current_heading_level()
@@ -343,19 +343,19 @@ function! markup#next_sibling_or_section() "{{{1
         let line_up=max([line('.'), search("^#\\+ ", "nW"), line('$')])
     end
     return min([l:line_next, l:line_up])
-endfunction
+endfunction "}}}
 
-function! markup#goto_next_sibling_or_section() "{{{1
+function! markup#goto_next_sibling_or_section() "{{{
     call setpos('.', [0, markup#next_sibling_or_section(), 1, 0])
-endfunction
+endfunction "}}}
 
-function! markup#fold_all_but_this_h1() "{{{1
+function! markup#fold_all_but_this_h1() "{{{
     call search('^# ', 'bc')
     norm zM
     norm zO
-endfunction
+endfunction "}}}
 
-function! markup#fold_all_but_current_heading() "{{{1
+function! markup#fold_all_but_current_heading() "{{{
     if !markup#on_heading()
         call search('^' . repeat('#', markup#current_heading_level()), 'bc')
     end
@@ -366,7 +366,7 @@ function! markup#fold_all_but_current_heading() "{{{1
         norm zo
     endwhile
     norm zO
-endfunction
+endfunction "}}}
 
 function! markup#list_to_h1(line1, line2) abort "{{{
     let num_spaces=substitute(getline(a:line1 + 1), "\\( \\+\\)-.*", "\\1", "")
@@ -379,7 +379,6 @@ function! markup#list_to_h1(line1, line2) abort "{{{
     exec ":" . a:line1 . "," . a:line2 "delete"
     call append(line('$'), l:lines)
 endfunction "}}}
-
 
 function! markup#replace_cWORD_with_bold() "{{{
     let msg="**" . expand("<cWORD>") . "**"
@@ -485,7 +484,6 @@ function! s:update_header_to_level(header, level) abort "{{{
     return l:fixed
 endfunction "}}}
 
-
 function! markup#paste_with_header_increase() abort "{{{
     let stuff=split(getreg('+'), "\n")
     let increased=map(l:stuff, {_, val -> substitute(val, '^#', '##', '')})
@@ -497,8 +495,6 @@ function! markup#paste_with_header_decrease() abort "{{{
     let decreased=map(l:stuff, {_, val -> substitute(val, '^#\(#\+\)', '\1', '')})
     call append(line('.'), l:decreased)
 endfunction "}}}
-
-
 
 function! markup#paste_with_min_level(level) abort "{{{
     let stuff=split(getreg('+'), "\n")
@@ -520,4 +516,13 @@ function! markup#paste_with_min_level(level) abort "{{{
     call append(line('.'), l:lines)
 endfunction "}}}
 
-
+function! markup#copy_heading_as_link() abort "{{{
+    let heading_0=substitute(getline(1), '^#\+ ', '', '')
+    let heading=substitute(getline(markup#previous_heading_linum(1)), '^#\+ ', '', '')
+    let heading=substitute(l:heading, ' ', '%20', 'g')
+    let txt = printf("%s -- %s", l:heading_0, l:heading)
+    let link = printf("[%s](%s#%s)", l:txt, expand('%'), l:heading)
+    call setreg('*', l:link)
+    call setreg('+', l:link)
+    return l:link
+endfunction "}}}
