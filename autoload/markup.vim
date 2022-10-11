@@ -2,6 +2,9 @@ let s:header_regexp="^#\\+ "
 if !exists("g:markdown_filename_as_header_suppress")
   let g:markdown_filename_as_header_suppress = 0
 endif
+if !exists("g:markup_goto_link_worked")
+    let g:markup_goto_link_worked=[]
+endif
 
 function! s:titlecase(str) abort "{{{
     let words=split(a:str, '\W\+')
@@ -49,7 +52,7 @@ function! markup#find_reference_link_from_anchor() abort "{{{
 endfunction "}}}
 
 function! markup#find_next_plain_link() abort "{{{
-    let link_re='\[.*\](\(.*\))'
+    let link_re='\[.\{-\}\](\(.\{-\}\))'
     let pos=searchpos(l:link_re, "cn")
     if pos[:2] == [0, 0]
         return
@@ -102,7 +105,6 @@ function! markup#goto_file(split) abort "{{{
         return [1, l:next_link_url]
     endif
     " ----
-    echom "[markup#goto_file] file url not readable. trying to resolve"
     let next_link_url_res = resolve(expand("%:p:h") . "/" . l:next_link_url)
     if filereadable(l:next_link_url_res)
         execute "silent!" . l:command . l:next_link_url_res
@@ -519,10 +521,60 @@ endfunction "}}}
 function! markup#copy_heading_as_link() abort "{{{
     let heading_0=substitute(getline(1), '^#\+ ', '', '')
     let heading=substitute(getline(markup#previous_heading_linum(1)), '^#\+ ', '', '')
-    let heading=substitute(l:heading, ' ', '%20', 'g')
     let txt = printf("%s -- %s", l:heading_0, l:heading)
+    let heading=substitute(l:heading, ' ', '%20', 'g')
     let link = printf("[%s](%s#%s)", l:txt, expand('%'), l:heading)
     call setreg('*', l:link)
     call setreg('+', l:link)
     return l:link
+endfunction "}}}
+
+function! markup#links_in_buffer() abort "{{{
+    let curpos=getpos('.')
+    let links = []
+    while 1
+        let [nextpos, nextlink] = markup#find_next_link()
+        call cursor([l:nextpos[0], l:nextpos[1]+1])
+        if index(l:links, [nextpos, nextlink]) > -1
+            break
+        endif
+        call add(l:links, [nextpos, nextlink])
+    endwhile
+    call cursor(l:curpos)
+    return l:links
+endfunction
+
+function! markup#all_links(same) abort "{{{
+    let links=markup#links_in_buffer()
+    let strlinks=map(l:links, { _, v -> printf("[%d,%d] %s", v[0][0], v[0][1], v[1]) })
+    let funcname='markup#goto_link_from_fzf'
+    if a:same
+        let funcname='markup#goto_link_from_fzf_same_window'
+    endif
+    call fzf#run(fzf#wrap({ 'source': l:strlinks, 'sink*': function(l:funcname) }))
+endfunction "}}}
+
+function! markup#goto_link_from_fzf(link) abort "{{{
+    let parts=matchlist(a:link[0], '\[\(\d\+\),\(\d\+\)\] \(.*\)')
+    let lnum=l:parts[1]
+    let cnum=l:parts[2]
+    call cursor([l:lnum, l:cnum])
+    let [worked, url]=markup#goto_file(0)
+    if worked == 0
+        echom "Link to file didn't work. assuming url: " . l:url
+        exec ":!firefox --new-tab '" . l:url . "'"
+    endif
+
+endfunction "}}}
+
+function! markup#goto_link_from_fzf_same_window(link) abort "{{{
+    let parts=matchlist(a:link[0], '\[\(\d\+\),\(\d\+\)\] \(.*\)')
+    let lnum=l:parts[1]
+    let cnum=l:parts[2]
+    call cursor([l:lnum, l:cnum])
+    let [worked, url]=markup#goto_file(1)
+    if worked == 0
+        echom "Link to file didn't work. assuming url: " . l:url
+        exec ":!firefox --new-tab '" . l:url . "'"
+    endif
 endfunction "}}}
