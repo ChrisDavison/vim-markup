@@ -5,7 +5,7 @@ function! markup#checkbox#add() " {{{1
     if markup#checkbox#has_box()
         return
     endif
-    silent!s/\(\s*\%(-\|[0-9]\+.\)\s\+\)\([^[].*$\)/\1[ ] \2
+    silent!s/\(\s*\%(-\|+\|\*\|[0-9]\+.\)\s\+\)\([^[].*$\)/\1[ ] \2
     nohlsearch
 endfunction
 
