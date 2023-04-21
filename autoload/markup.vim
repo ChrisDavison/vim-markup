@@ -85,6 +85,9 @@ function! markup#find_next_link() abort "{{{
 endfunction "}}}
 
 function! markup#goto_file(split) abort "{{{
+    if getline(".") =~# '\[' && getline(".")[col(".") - 1] == "["
+        call cursor(line("."), col(".") - 1)
+    endif
     let [next_link_pos, next_link_url]=markup#find_next_link()
     call cursor(l:next_link_pos)
     let command = "edit "
