@@ -62,6 +62,18 @@ function! markup#find_next_plain_link() abort "{{{
     return [l:pos, l:url]
 endfunction "}}}
 
+function! markup#find_next_plain_url() abort "{{{
+    let url_re='\(https\?:\/\/\S\+\)'
+    let pos=searchpos(l:url_re, "cn")
+    if pos[:2] == [0, 0]
+        return
+    endif
+    let line=getline(pos[0])
+    let url=matchlist(l:line, l:url_re, pos[1]-1)[1]
+    return [l:pos, l:url]
+endfunction "}}}
+
+
 function! s:compare_link_matches(i1, i2) "{{{
     let [row1, col1] = a:i1[0]
     let [row2, col2] = a:i2[0]
@@ -78,9 +90,13 @@ function! markup#find_next_link() abort "{{{
     let nearest_links=filter([
                 \ markup#find_next_reference_link(),
                 \ markup#find_reference_link_from_anchor(),
-                \ markup#find_next_plain_link()
+                \ markup#find_next_plain_link(),
+                \ markup#find_next_plain_url()
                 \ ], {_, v -> len(v) > 1})
     call sort(l:nearest_links, function("<sid>compare_link_matches"))
+    if len(l:nearest_links) == 0
+        return [0, '']
+    endif
     return l:nearest_links[0]
 endfunction "}}}
 
@@ -558,14 +574,15 @@ function! markup#all_links(same) abort "{{{
 endfunction "}}}
 
 function! markup#goto_link_from_fzf(link) abort "{{{
-    let parts=matchlist(a:link[0], '\[\(\d\+\),\(\d\+\)\] \(.*\)')
-    let lnum=l:parts[1]
+    let parts=matchlist(a:link[0], '\[\(\d\+\),\(\d\+\)\].*: \(.*\)')
+    let lnum=l:parts[1] + 1
     let cnum=l:parts[2]
     call cursor([l:lnum, l:cnum])
     let [worked, url]=markup#goto_file(0)
+    echom l:url
     if worked == 0
         echom "Link to file didn't work. assuming url: " . l:url
-        exec ":!firefox --new-tab '" . l:url . "'"
+        exec ":!firefox --new-tab '" . escape(l:url, '%') . "'"
     endif
 
 endfunction "}}}
