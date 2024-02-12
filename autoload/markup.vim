@@ -161,28 +161,33 @@ function! s:first_line_from_file(filename) "{{{
     return substitute(l:title, "^\#\\+ \\+", "", "")
 endfunction "}}}
 
-function! markup#move_visual_selection_to_file(start, end) abort "{{{
+function! markup#move_visual_selection_to_file(start, end, ...) abort "{{{
     " Need to write to a file relative to PWD
     " but copy link relative to file of origin
     " e.g. if origin file is DIRECTORY/parentfile.md
     " need to write to DIRECTORY/childfile.md
     " but link to [child](./childfile.md)
-    let filename=input("Filename (relative to `" . expand("%:h") . "/`): ")
-    let dir_of_origin=expand('%:.:h')
-    let curdir=getcwd()
-    let filename_nospace=tolower(substitute(l:filename, ' ', '-', 'g')) . ".md"
+	if a:0 > 0
+		let filename = getcwd() . "/" .  a:1
+	else
+		let dir_of_origin=expand('%:.:h')
+		let filename=input("Filename (relative to `" . expand("%:h") . "/`): ")
+		let filename=tolower(substitute(l:filename, ' ', '-', 'g')) . ".md"
+		let filename=l:dir_of_origin . "/" . l:filename
+	endif
+
     let linequery=a:start . "," . a:end
-    let full_filename=l:dir_of_origin . "/" . l:filename_nospace
-    silent! exec ":" . l:linequery . "w " . l:full_filename
-    let text=<SID>first_line_from_file(l:full_filename)
-    let link="[" . l:text . "](./" . l:filename_nospace . ")"
+
+    silent! exec ":" . l:linequery . "w " . l:filename
+    let text=<SID>first_line_from_file(l:filename)
+    let link="[" . l:text . "](./" . l:filename . ")"
     silent! exec ":" . l:linequery . "d"
     write
     let @+=l:link
     echo "Link copied to clipboard."
-    exec "edit " . l:full_filename
+    exec "silent edit " . l:filename
     call markup#promote_till_l1()
-    exec "edit #"
+    exec "silent edit #"
 endfunction "}}}
 
 function! markup#previous_heading_linum(same) "{{{
@@ -311,9 +316,12 @@ function! markup#lowest_header_level() "{{{
 endfunction "}}}
 
 function! markup#promote_till_l1() "{{{
-    let to_replace=repeat("#", markup#lowest_header_level())
-    exec "%s/" . l:to_replace . " /# /g"
-    write
+	let lowest = markup#lowest_header_level()
+	if lowest > 0
+		let to_replace=repeat("#", lowest)
+		exec "%s/" . l:to_replace . " /# /g"
+		write
+	end
 endfunction "}}}
 
 function! markup#current_heading_level() "{{{

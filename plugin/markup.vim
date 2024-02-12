@@ -29,7 +29,7 @@ if !exists("g:markup_no_checkbox_mappings") || !g:markup_no_checkbox_mappings
   vnoremap <leader>X :call markup#checkbox#remove()<CR>
 endif
 
-command! -range MoveVisualToFile call markup#move_visual_selection_to_file(<line1>, <line2>)
+command! -range -complete=file -nargs=? MoveVisualToFile call markup#move_visual_selection_to_file(<line1>, <line2>, <q-args>)
 command! FilenameAsHeader call markup#filename_as_header()
 command! -bang Backlinks call markup#backlinks(<bang>1)
 
